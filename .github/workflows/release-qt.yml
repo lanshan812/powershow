@@ -33,7 +33,8 @@ jobs:
         if: matrix.platform == 'windows-latest'
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.5.3'
+          version: '6.8.2'
+          arch: win64_msvc2022_64
           cache: true
 
       - name: Build (Linux)
