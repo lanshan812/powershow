@@ -1,0 +1,14 @@
+{
+  "name": "battery-card",
+  "version": "1.0.0",
+  "description": "macOS-style floating battery card for Bluetooth peripherals",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^45.2.1"
+  }
+}
