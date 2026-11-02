@@ -28,6 +28,26 @@
 
 > 蓝牙外设需支持电量上报（蓝牙 HID over GATT 的 Battery Service）。电量由设备固件估算（通常基于电压），唤醒或负载变化时跳变属正常现象。
 
+## 开机自启
+
+安装后（deb 装到 `/usr/bin/powershow`）：
+
+```bash
+mkdir -p ~/.config/autostart
+cat > ~/.config/autostart/powershow.desktop <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=PowerShow
+Exec=/usr/bin/powershow
+Icon=powershow
+Terminal=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3
+EOF
+```
+
+Windows：把 `PowerShow.exe` 的快捷方式放进 `shell:startup`（`Win+R` 输入 `shell:startup` 回车）。
+
 ## 从源码构建
 
 依赖：CMake ≥ 3.16、Qt 6 Widgets。
