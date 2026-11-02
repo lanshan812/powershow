@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=PowerShow
+Comment=悬浮蓝牙电量卡片
+Exec=powershow
+Icon=powershow
+Terminal=false
+Type=Application
+Categories=Utility;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true

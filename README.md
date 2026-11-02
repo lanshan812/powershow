@@ -13,6 +13,26 @@
 - **立即刷新**：标题栏刷新按钮 + 60 秒自动刷新 + 托盘菜单刷新
 - **系统托盘**：刷新 / 显示隐藏 / 退出
 
+## 三种实现
+
+| 实现 | 目录 | 内存 (PSS) | 主程序体积 | 说明 |
+|---|---|---|---|---|
+| **Qt Widgets（推荐）** | `qt/` | **~37 MB** | 86 KB（依赖 Qt6 系统库） | 单进程 QPainter 自绘，启动最快 |
+| Tauri 2 | `src-tauri/`, `ui/` | ~71 MB | 3.6 MB | Rust + WebKit，HTML/CSS 渲染 |
+| Electron（旧版） | `legacy/` | ~291 MB | 146 MB zip | 已归档 |
+
+## 构建 Qt 版
+
+```bash
+cd qt
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+./build/powershow            # 运行
+./build/powershow --dump     # 打印当前采集到的设备电量并退出
+```
+
+依赖 Qt6 Widgets（Debian/Ubuntu：`qt6-base-dev`）。
+
 ## 下载安装
 
 前往 [Releases](https://github.com/lanshan812/powershow/releases) 下载对应平台：

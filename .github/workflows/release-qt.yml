@@ -1,0 +1,92 @@
+name: Release Qt
+
+on:
+  push:
+    tags:
+      - 'v3*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+          - platform: windows-latest
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qt6-base-dev cmake build-essential
+
+      - name: Install Qt (Windows)
+        if: matrix.platform == 'windows-latest'
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.5.3'
+          cache: true
+
+      - name: Build (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        working-directory: qt
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j$(nproc)
+
+      - name: Build (Windows)
+        if: matrix.platform == 'windows-latest'
+        working-directory: qt
+        shell: bash
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -G "MinGW Makefiles"
+          cmake --build build -j 4
+
+      - name: Package Linux
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          cd qt
+          tar -czf ../PowerShow-qt-${GITHUB_REF_NAME}-linux-x64.tar.gz -C build powershow
+          mkdir -p pkg/DEBIAN pkg/usr/bin pkg/usr/share/applications pkg/usr/share/icons/hicolor/512x512/apps
+          cp build/powershow pkg/usr/bin/
+          cp powershow.desktop pkg/usr/share/applications/
+          cp ../build/icon.png pkg/usr/share/icons/hicolor/512x512/apps/powershow.png
+          cat > pkg/DEBIAN/control <<EOF
+          Package: powershow
+          Version: ${GITHUB_REF_NAME#v}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Depends: libqt6widgets6, libqt6core6, libqt6gui6
+          Maintainer: lanshan812
+          Description: Floating battery card for Bluetooth peripherals
+          EOF
+          dpkg-deb --build pkg ../PowerShow-qt-${GITHUB_REF_NAME}-linux-x64.deb
+
+      - name: Package Windows
+        if: matrix.platform == 'windows-latest'
+        working-directory: qt
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp build/powershow.exe dist/PowerShow.exe
+          windeployqt --release --no-translations dist/PowerShow.exe
+          cd dist && 7z a "../../PowerShow-qt-${GITHUB_REF_NAME}-win-x64.zip" ./*
+
+      - name: Upload to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --title "PowerShow Qt $GITHUB_REF_NAME" --notes "Qt Widgets 单进程版：内存约 37MB，主程序 86KB。"
+          gh release upload "$GITHUB_REF_NAME" PowerShow-qt-* --clobber
