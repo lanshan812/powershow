@@ -63,6 +63,17 @@ legacy/                # v1 Electron 实现（保留参考）
 
 > 蓝牙外设电量由设备固件估算（通常基于电压），会在唤醒/负载变化时跳动，属正常现象。
 
+## Linux 常见问题
+
+**Ubuntu 24.04+ 窗口空白/看不到卡片**：Ubuntu 默认开启 `kernel.apparmor_restrict_unprivileged_userns=1`，WebKitGTK 的沙箱进程（bwrap）无法启动，导致透明窗口里没有任何内容。安装本项目自带的 AppArmor 配置即可：
+
+```bash
+sudo cp apparmor/powershow /etc/apparmor.d/
+sudo apparmor_parser -r /etc/apparmor.d/powershow
+```
+
+（这是 Ubuntu 官方给 Chrome/Electron 应用用的同一套方案，不影响系统其他安全策略。）
+
 ## License
 
 MIT
