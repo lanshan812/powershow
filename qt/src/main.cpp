@@ -14,6 +14,8 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QCursor>
+#include <QScreen>
+#include <QGuiApplication>
 #include <QMouseEvent>
 #include <QSlider>
 #include <QIcon>
@@ -190,6 +192,8 @@ private:
     QPoint m_dragOffset;
     bool m_dragging = false;
     QSlider *m_slider = nullptr;
+    QPoint m_pos;
+    bool m_hasPos = false;
 
     QRect refreshRect() const;
     QRect gearRect() const;
@@ -233,6 +237,24 @@ BatteryCard::BatteryCard(QWidget *parent) : QWidget(parent)
     layoutForDevices();
     refresh();
 
+    // 初始位置：记忆的位置（越界则回退），否则主屏右上角（避开顶栏）
+    bool placed = false;
+    if (m_hasPos) {
+        for (QScreen *s : QGuiApplication::screens()) {
+            if (s->availableGeometry().intersects(QRect(m_pos, size()))) {
+                move(m_pos);
+                placed = true;
+                break;
+            }
+        }
+    }
+    if (!placed) {
+        if (QScreen *s = QGuiApplication::primaryScreen()) {
+            const QRect a = s->availableGeometry();
+            move(a.right() - width() - 30, a.top() + 30);
+        }
+    }
+
     auto *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &BatteryCard::refresh);
     timer->start(60 * 1000);
@@ -245,6 +267,10 @@ void BatteryCard::loadSettings()
     if (f.open(QIODevice::ReadOnly)) {
         const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
         if (o.contains("bgAlpha")) m_bgAlpha = o["bgAlpha"].toDouble();
+        if (o.contains("x") && o.contains("y")) {
+            m_pos = QPoint(o["x"].toInt(), o["y"].toInt());
+            m_hasPos = true;
+        }
     }
     if (m_slider) m_slider->setValue(int(m_bgAlpha * 100));
 }
@@ -255,7 +281,9 @@ void BatteryCard::saveSettings()
     QDir().mkpath(dir);
     QFile f(dir + "/state.json");
     if (f.open(QIODevice::WriteOnly)) {
-        QJsonObject o{{"bgAlpha", m_bgAlpha}};
+        QJsonObject o{{"bgAlpha", m_bgAlpha},
+                      {"x", pos().x()},
+                      {"y", pos().y()}};
         f.write(QJsonDocument(o).toJson());
     }
 }
@@ -517,9 +545,12 @@ void BatteryCard::mouseMoveEvent(QMouseEvent *e)
     }
 }
 
-void BatteryCard::mouseReleaseEvent(QMouseEvent *)
+void BatteryCard::mouseReleaseEvent(QMouseEvent *e)
 {
-    m_dragging = false;
+    if (m_dragging) {
+        m_dragging = false;
+        saveSettings();   // 记住拖动后的位置
+    }
     // 点击面板外关闭设置
     if (m_settingsOpen && !settingsRect().contains(mapFromGlobal(QCursor::pos()))) {
         toggleSettings();
@@ -545,6 +576,11 @@ void BatteryCard::toggleSettings()
 
 int main(int argc, char *argv[])
 {
+#ifdef Q_OS_LINUX
+    // Wayland 下客户端无法控制窗口位置，本例需要固定摆放 → 优先走 XWayland
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM") && !qEnvironmentVariableIsEmpty("DISPLAY"))
+        qputenv("QT_QPA_PLATFORM", "xcb");
+#endif
     QApplication app(argc, argv);
     QApplication::setApplicationName("PowerShow");
     QApplication::setOrganizationName("lanshan812");
@@ -561,6 +597,18 @@ int main(int argc, char *argv[])
 
     BatteryCard card;
     card.show();
+    card.raise();     // Wayland 下由合成器决定层级，raise 使其首次出现时可见
+    qInfo() << "platform:" << QGuiApplication::platformName()
+            << "visible:" << card.isVisible()
+            << "geometry:" << card.geometry();
+
+    // 调试：--shot 延迟 1 秒把窗口自身内容存成 PNG 后退出
+    if (app.arguments().contains("--shot")) {
+        QTimer::singleShot(1000, &app, [&card]() {
+            card.grab().save("/tmp/card_self.png");
+            qApp->quit();
+        });
+    }
 
     // 托盘
     QIcon icon = QIcon::fromTheme("battery-good");
