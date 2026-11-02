@@ -34,7 +34,7 @@ function createWindow() {
     frame: false,
     transparent: true,
     resizable: false,
-    alwaysOnTop: true,
+    alwaysOnTop: false,          // 桌面组件化：不置顶，被其他窗口正常遮挡
     skipTaskbar: true,
     hasShadow: true,
     minimizable: false,
@@ -47,8 +47,8 @@ function createWindow() {
     },
   });
 
-  // 不抢占焦点：点击其他窗口时卡片不会把焦点抢回来
-  win.setAlwaysOnTop(true, 'screen-saver');
+  // 桌面组件化：所有工作区可见、不抢焦点
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   if (isLinux) {
     win.setSkipTaskbar(true);
   }
