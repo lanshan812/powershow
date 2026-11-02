@@ -1,9 +1,0 @@
-/home/wangshuo14/battery-card/qt/build/CMakeFiles/powershow.dir
-/home/wangshuo14/battery-card/qt/build/CMakeFiles/edit_cache.dir
-/home/wangshuo14/battery-card/qt/build/CMakeFiles/rebuild_cache.dir
-/home/wangshuo14/battery-card/qt/build/CMakeFiles/list_install_components.dir
-/home/wangshuo14/battery-card/qt/build/CMakeFiles/install.dir
-/home/wangshuo14/battery-card/qt/build/CMakeFiles/install/local.dir
-/home/wangshuo14/battery-card/qt/build/CMakeFiles/install/strip.dir
-/home/wangshuo14/battery-card/qt/build/CMakeFiles/powershow_autogen_timestamp_deps.dir
-/home/wangshuo14/battery-card/qt/build/CMakeFiles/powershow_autogen.dir
