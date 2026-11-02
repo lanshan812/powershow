@@ -22,7 +22,18 @@
 
 > 前提：蓝牙外设本身支持电量上报（蓝牙 HID over GATT 的 Battery Service）。部分老设备或使用 USB 接收器的设备不上报电量。
 
-## 运行
+## 下载安装
+
+前往 [Releases](https://github.com/lanshan812/powershow/releases) 下载对应平台：
+
+| 平台 | 文件 | 使用方式 |
+|---|---|---|
+| Windows | `PowerShow-x.x.x-win.zip` | 解压后双击 `PowerShow.exe` |
+| Linux | `PowerShow-x.x.x.AppImage` | `chmod +x` 后直接运行（或 `./PowerShow-x.x.x.AppImage`） |
+
+> Linux 首次运行如遇沙箱报错，可加 `--no-sandbox` 参数。
+
+## 从源码运行
 
 ```bash
 npm install
