@@ -17,4 +17,4 @@ endif()
 
 install(TARGETS powershow RUNTIME DESTINATION bin)
 install(FILES powershow.desktop DESTINATION share/applications)
-install(FILES ../build/icon.png DESTINATION share/icons/hicolor/512x512/apps RENAME powershow.png)
+install(FILES assets/icon.png DESTINATION share/icons/hicolor/512x512/apps RENAME powershow.png)

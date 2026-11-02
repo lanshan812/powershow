@@ -2,36 +2,19 @@
 
 轻量的桌面悬浮电量卡片，实时显示本机蓝牙外设（键盘 / 鼠标 / 耳机 / 手柄）的剩余电量。
 
-基于 **Tauri 2**（Rust + 系统 WebView）构建：主程序仅 ~3.6 MB，Linux deb 包 1.5 MB，内存占用约为 Electron 版的一半。
+单进程、纯 **Qt Widgets + QPainter 自绘**实现：主程序仅 **86 KB**，内存占用约 **20–37 MB**，启动近乎瞬时。
+
+![screenshot](docs/screenshot.png)
 
 ## 特性
 
-- **磨砂悬浮卡片**：无边框、不进任务栏、不抢焦点，顶部区域可拖动
+- **悬浮卡片**：无边框、不被窗口遮挡（桌面组件定位），顶部拖动移动位置
 - **iOS 风格电池胶囊**：电量 <35% 变黄、<15% 变红
-- **自动深浅双主题**：跟随系统 `prefers-color-scheme`
-- **背景透明度可调**：只调背景，文字与电量显示保持清晰
-- **立即刷新**：标题栏刷新按钮 + 60 秒自动刷新 + 托盘菜单刷新
-- **系统托盘**：刷新 / 显示隐藏 / 退出
-
-## 三种实现
-
-| 实现 | 目录 | 内存 (PSS) | 主程序体积 | 说明 |
-|---|---|---|---|---|
-| **Qt Widgets（推荐）** | `qt/` | **~37 MB** | 86 KB（依赖 Qt6 系统库） | 单进程 QPainter 自绘，启动最快 |
-| Tauri 2 | `src-tauri/`, `ui/` | ~71 MB | 3.6 MB | Rust + WebKit，HTML/CSS 渲染 |
-| Electron（旧版） | `legacy/` | ~291 MB | 146 MB zip | 已归档 |
-
-## 构建 Qt 版
-
-```bash
-cd qt
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
-./build/powershow            # 运行
-./build/powershow --dump     # 打印当前采集到的设备电量并退出
-```
-
-依赖 Qt6 Widgets（Debian/Ubuntu：`qt6-base-dev`）。
+- **自动深浅双主题**：跟随系统配色
+- **背景透明度可调**：齿轮面板滑杆，只调卡片背景，文字与电量显示保持清晰
+- **手动刷新**：点击刷新按钮即时拉取（带旋转动画），默认每 60 秒自动刷新
+- **位置记忆**：拖动后的位置自动保存，越界自动回退到主屏右上角
+- **系统托盘**：立即刷新 / 显示隐藏 / 退出
 
 ## 下载安装
 
@@ -39,60 +22,64 @@ cmake --build build -j$(nproc)
 
 | 平台 | 文件 | 使用方式 |
 |---|---|---|
-| Windows | `PowerShow_x.x.x_x64-setup.exe` | 直接安装 |
-| Windows（免安装） | `PowerShow-x.x.x-portable.zip` | 解压后双击 `PowerShow.exe` |
-| Linux | `powershow_x.x.x_amd64.deb` | `sudo dpkg -i` 安装 |
-| Linux | `PowerShow_x.x.x_amd64.AppImage` | `chmod +x` 后直接运行 |
+| Windows | `PowerShow-qt-*-win-x64.zip` | 解压后双击 `PowerShow.exe`（Qt 运行库已内置） |
+| Linux | `PowerShow-qt-*-linux-x64.deb` | `sudo dpkg -i` 安装（依赖系统 Qt6） |
+| Linux | `PowerShow-qt-*-linux-x64.tar.gz` | 解压后直接运行 |
 
-> Windows 依赖系统自带的 WebView2（Win10/11 已内置）。
-> Linux 依赖 webkit2gtk-4.1 等系统库，deb 包会自动安装依赖；AppImage 已自带这些库所以体积较大。
+> 蓝牙外设需支持电量上报（蓝牙 HID over GATT 的 Battery Service）。电量由设备固件估算（通常基于电压），唤醒或负载变化时跳变属正常现象。
 
 ## 从源码构建
 
-需要 Rust 工具链与平台依赖（Linux：`libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev`）。
+依赖：CMake ≥ 3.16、Qt 6 Widgets。
 
 ```bash
-cd src-tauri
-cargo build --release        # 产出 target/release/powershow
-cargo test --release         # 采集逻辑测试
-npx @tauri-apps/cli build    # 打包 AppImage / deb
+# Debian / Ubuntu
+sudo apt install qt6-base-dev cmake build-essential libgl1-mesa-dev libxkbcommon-dev
+
+cd qt
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+./build/powershow
 ```
 
-推送 `v*` 标签会自动触发 GitHub Actions 构建 Windows 安装包与免安装 zip，并发布到 Releases。
+调试命令：
+
+```bash
+./build/powershow --dump   # 打印当前采集到的设备与电量后退出
+./build/powershow --shot   # 渲染自身画面到 /tmp/card_self.png（无桌面环境时验证绘制）
+```
+
+Windows 构建需要 Qt 6（MSVC 或 MinGW 均可），`windeployqt` 打包运行时依赖。
 
 ## 项目结构
 
 ```
-ui/                    # 前端（HTML + CSS + JS）
-  index.html
-  style.css            # 磨砂卡片、电池胶囊、深浅双主题
-  renderer.js          # 列表渲染、设置、刷新交互（Tauri invoke）
-src-tauri/
-  src/lib.rs           # 电量采集（upower / PowerShell）、设置持久化、托盘
-  src/main.rs
-  tauri.conf.json      # 窗口（透明/无边框/不置顶）、打包配置
-  capabilities/        # Tauri 权限
-  icons/
-legacy/                # v1 Electron 实现（保留参考）
+qt/
+  src/main.cpp          # 全部逻辑：采集、自绘卡片、交互、托盘（约 700 行）
+  CMakeLists.txt
+  powershow.desktop     # Linux 桌面入口
+  assets/icon.png       # 应用图标
+docs/screenshot.png
+.github/workflows/release-qt.yml   # 打标签自动构建两平台产物并发布 Release
 ```
 
-## 电量采集原理
+## 实现说明
 
-- **Linux**：读取 `upower --dump`，蓝牙外设电量经 bluez 的 Battery1 接口转发到 UPower
-- **Windows**：`Win32_Battery`（蓝牙 HID over GATT 的虚拟电池），取 `EstimatedChargeRemaining`
+- **电量采集**
+  - Linux：解析 `upower --dump` 中 `native-path` 为 `/org/bluez/*` 的蓝牙设备
+  - Windows：读取 `Win32_Battery` 的 `EstimatedChargeRemaining`（蓝牙外设虚拟电池）
+- **窗口**：`FramelessWindowHint` + 半透明背景，`QPainter` 绘制圆角卡片、电池胶囊与图标
+- **平台细节**
+  - Linux 检测到 `DISPLAY` 时优先使用 XWayland（`QT_QPA_PLATFORM=xcb`）——Wayland 协议下客户端无法控制窗口位置
+  - Windows 使用系统托盘与原生窗口消息
 
-> 蓝牙外设电量由设备固件估算（通常基于电压），会在唤醒/负载变化时跳动，属正常现象。
+## 版本历史
 
-## Linux 常见问题
-
-**Ubuntu 24.04+ 窗口空白/看不到卡片**：Ubuntu 默认开启 `kernel.apparmor_restrict_unprivileged_userns=1`，WebKitGTK 的沙箱进程（bwrap）无法启动，导致透明窗口里没有任何内容。安装本项目自带的 AppArmor 配置即可：
-
-```bash
-sudo cp apparmor/powershow /etc/apparmor.d/
-sudo apparmor_parser -r /etc/apparmor.d/powershow
-```
-
-（这是 Ubuntu 官方给 Chrome/Electron 应用用的同一套方案，不影响系统其他安全策略。）
+| 版本 | 实现 | 内存 (PSS) | 主程序 |
+|---|---|---|---|
+| v3（当前） | Qt Widgets 自绘 | ~20–37 MB | 86 KB |
+| v2 | Tauri 2（Rust + WebKit） | ~71 MB | 3.6 MB |
+| v1 | Electron | ~291 MB | — |
 
 ## License
 

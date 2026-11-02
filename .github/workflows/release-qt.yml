@@ -60,7 +60,7 @@ jobs:
           mkdir -p pkg/DEBIAN pkg/usr/bin pkg/usr/share/applications pkg/usr/share/icons/hicolor/512x512/apps
           cp build/powershow pkg/usr/bin/
           cp powershow.desktop pkg/usr/share/applications/
-          cp ../build/icon.png pkg/usr/share/icons/hicolor/512x512/apps/powershow.png
+          cp assets/icon.png pkg/usr/share/icons/hicolor/512x512/apps/powershow.png
           cat > pkg/DEBIAN/control <<EOF
           Package: powershow
           Version: ${GITHUB_REF_NAME#v}

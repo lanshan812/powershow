@@ -3,6 +3,5 @@ dist/
 *.log
 .DS_Store
 release/
-src-tauri/target/
-legacy/node_modules/
 package-lock.json
+qt/build/
