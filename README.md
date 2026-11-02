@@ -1,26 +1,17 @@
 # PowerShow
 
-轻量的桌面悬浮电量卡片，在桌面上以 AirBattery 风格的磨砂卡片实时显示本机蓝牙外设（键盘 / 鼠标 / 耳机 / 手柄）的剩余电量。
+轻量的桌面悬浮电量卡片，实时显示本机蓝牙外设（键盘 / 鼠标 / 耳机 / 手柄）的剩余电量。
 
-![screenshot](docs/screenshot.png)
+基于 **Tauri 2**（Rust + 系统 WebView）构建：主程序仅 ~3.6 MB，Linux deb 包 1.5 MB，内存占用约为 Electron 版的一半。
 
 ## 特性
 
-- **磨砂悬浮卡片**：无边框、置顶、不进任务栏、不抢焦点，可任意拖动，位置自动记忆
-- **iOS 风格电池胶囊**：横置电池图形 + 圆头填充，电量 <35% 变黄、<15% 变红
-- **自动深浅双主题**：跟随系统 `prefers-color-scheme` 切换
-- **背景透明度调节**：卡片内置设置面板，只调背景、文字与电量显示保持清晰
-- **立即刷新**：标题栏刷新按钮手动拉取，默认每 60 秒自动刷新
+- **磨砂悬浮卡片**：无边框、不进任务栏、不抢焦点，顶部区域可拖动
+- **iOS 风格电池胶囊**：电量 <35% 变黄、<15% 变红
+- **自动深浅双主题**：跟随系统 `prefers-color-scheme`
+- **背景透明度可调**：只调背景，文字与电量显示保持清晰
+- **立即刷新**：标题栏刷新按钮 + 60 秒自动刷新 + 托盘菜单刷新
 - **系统托盘**：刷新 / 显示隐藏 / 退出
-
-## 支持平台
-
-| 平台 | 电量来源 | 状态 |
-|---|---|---|
-| Linux | `upower`（bluetoothd → UPower 转发的蓝牙外设电量） | ✅ 已验证 |
-| Windows | `Win32_Battery`（蓝牙外设虚拟电池），降级 PnP `BatteryReportValue` | ✅ 实现 |
-
-> 前提：蓝牙外设本身支持电量上报（蓝牙 HID over GATT 的 Battery Service）。部分老设备或使用 USB 接收器的设备不上报电量。
 
 ## 下载安装
 
@@ -28,46 +19,49 @@
 
 | 平台 | 文件 | 使用方式 |
 |---|---|---|
-| Windows | `PowerShow-x.x.x-win.zip` | 解压后双击 `PowerShow.exe` |
-| Linux | `PowerShow-x.x.x.AppImage` | `chmod +x` 后直接运行（或 `./PowerShow-x.x.x.AppImage`） |
+| Windows | `PowerShow_x.x.x_x64-setup.exe` | 直接安装 |
+| Windows（免安装） | `PowerShow-x.x.x-portable.zip` | 解压后双击 `PowerShow.exe` |
+| Linux | `powershow_x.x.x_amd64.deb` | `sudo dpkg -i` 安装 |
+| Linux | `PowerShow_x.x.x_amd64.AppImage` | `chmod +x` 后直接运行 |
 
-> Linux 首次运行如遇沙箱报错，可加 `--no-sandbox` 参数。
+> Windows 依赖系统自带的 WebView2（Win10/11 已内置）。
+> Linux 依赖 webkit2gtk-4.1 等系统库，deb 包会自动安装依赖；AppImage 已自带这些库所以体积较大。
 
-## 从源码运行
+## 从源码构建
 
-```bash
-npm install
-npm start
-```
-
-要求 Node.js ≥ 18。
-
-Linux Wayland 下如遇窗口异常，可用：
+需要 Rust 工具链与平台依赖（Linux：`libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev`）。
 
 ```bash
-ELECTRON_OZONE_PLATFORM_HINT=wayland npm start
+cd src-tauri
+cargo build --release        # 产出 target/release/powershow
+cargo test --release         # 采集逻辑测试
+npx @tauri-apps/cli build    # 打包 AppImage / deb
 ```
+
+推送 `v*` 标签会自动触发 GitHub Actions 构建 Windows 安装包与免安装 zip，并发布到 Releases。
 
 ## 项目结构
 
 ```
-main.js                 # 窗口（无边框/透明/置顶）、托盘、IPC、位置与设置持久化
-preload.js              # contextBridge 安全桥接
-renderer/
-  index.html            # 卡片结构
-  style.css             # 磨砂卡片、电池胶囊、深浅双主题
-  renderer.js           # 列表渲染、设置面板、刷新交互
-collectors/
-  linux.js              # upower --dump 解析蓝牙外设电量
-  windows.js            # PowerShell（Win32_Battery / PnP）采集
+ui/                    # 前端（HTML + CSS + JS）
+  index.html
+  style.css            # 磨砂卡片、电池胶囊、深浅双主题
+  renderer.js          # 列表渲染、设置、刷新交互（Tauri invoke）
+src-tauri/
+  src/lib.rs           # 电量采集（upower / PowerShell）、设置持久化、托盘
+  src/main.rs
+  tauri.conf.json      # 窗口（透明/无边框/不置顶）、打包配置
+  capabilities/        # Tauri 权限
+  icons/
+legacy/                # v1 Electron 实现（保留参考）
 ```
 
-## 设置持久化
+## 电量采集原理
 
-位置、背景透明度保存在 Electron `userData` 目录下的 `state.json`：
+- **Linux**：读取 `upower --dump`，蓝牙外设电量经 bluez 的 Battery1 接口转发到 UPower
+- **Windows**：`Win32_Battery`（蓝牙 HID over GATT 的虚拟电池），取 `EstimatedChargeRemaining`
 
-- Linux: `~/.config/battery-card/state.json`
-- Windows: `%APPDATA%/battery-card/state.json`
+> 蓝牙外设电量由设备固件估算（通常基于电压），会在唤醒/负载变化时跳动，属正常现象。
 
 ## License
 
